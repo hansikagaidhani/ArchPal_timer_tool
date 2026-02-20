@@ -64,7 +64,6 @@ def get_emotion_image_path(emotion_keyword):
     emotion_file = EMOTION_FILE_MAP.get(emotion_keyword.lower(), 'default.png')
     return os.path.join(EMOTIONS_PATH, emotion_file)
 
-
 @st.cache_data(show_spinner=False)
 def load_emotion_image(emotion_keyword):
     """Load and resize an emotion image, cached across reruns.
@@ -311,6 +310,55 @@ with st.sidebar:
     st.markdown("### Student Information")
     st.text(f"Name: {first_name} {last_name}")
     st.text(f"Course: {course_number}")
+
+    st.divider()
+
+    #Edit profile
+    st.markdown("### ✏️ Edit Profile")
+    with st.expander("Update your information"):
+        with st.form("edit_profile_form"):
+            new_first_name = st.text_input("First Name", value=first_name)
+            new_last_name = st.text_input("Last Name", value=last_name)
+            new_college_year = st.selectbox(
+                "College Year",
+                ["First Year", "Second Year", "Upper-Division", "Masters Student", "PhD Student", "Faculty"],
+                index=["First Year", "Second Year", "Upper-Division", "Masters Student", "PhD Student", "Faculty"].index(college_year)
+                )
+            new_major = st.text_input("Major", value=major)
+            new_course_number = st.text_input("Course Number", value=course_number)
+            save_clicked = st.form_submit_button("💾 Save Changes", use_container_width=True)
+            
+            if save_clicked:
+                updated_info = {
+                    "first_name": new_first_name.strip(),
+                    "last_name": new_last_name.strip(),
+                    "college_year": new_college_year,
+                    "major": new_major.strip(),"course_number": new_course_number.strip(),
+                    "unique_identifier": student_info["unique_id"],
+                    "email": student_info.get("email", "")
+                    }
+                
+                # Call S3 function here
+                success = s3_storage.update_user_info(cognito_user_id, updated_info)
+                
+                if success:
+                    # Update session state to reflect changes immediately
+                    st.session_state["student_info"].update({
+                        "first_name": new_first_name.strip(),
+                        "last_name": new_last_name.strip(),
+                        "college_year": new_college_year,
+                        "major": new_major.strip(),
+                        "course_number": new_course_number.strip(),
+                        })
+                    # Rebuild system prompt with new info
+                    st.session_state["default_system_prompt"] = build_default_system_prompt(
+                        new_first_name.strip(), new_last_name.strip(), new_college_year, new_major.strip()
+                        )
+                    st.success("✅ Profile updated!")
+                    st.rerun()
+                    
+                else:
+                    st.error("❌ Failed to save. Please try again.")
 
     st.divider()
 
