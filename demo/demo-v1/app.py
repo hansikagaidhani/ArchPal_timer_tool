@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 # Local imports
 from utils import cognito_auth, data_export, s3_storage
 
+st.set_page_config(layout="wide")
+
 # Constants
 ICON_PATH = os.path.join(os.path.dirname(__file__), "figs", "icon.jpg")
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "figs", "logo.png")
@@ -143,6 +145,14 @@ def initialize_session_state():
     
     # Initialize Auth State
     cognito_auth.init_auth_state()
+
+def apply_custom_css():
+    css_path = os.path.join(os.path.dirname(__file__), "style.css")
+    with open(css_path) as f:
+        css = f.read()
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+apply_custom_css()
 
 # Initialize session state
 initialize_session_state()
@@ -304,18 +314,21 @@ with st.sidebar:
     st.markdown("### ArchPal: AI Writing Coach")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
+    # st.divider()
 
     #Student info
-    st.markdown("### Student Information")
-    st.text(f"Name: {first_name} {last_name}")
-    st.text(f"Course: {course_number}")
+    # st.markdown("### Student Information")
+    # st.text(f"Name: {first_name} {last_name}")
+    # st.text(f"Course: {course_number}")
+    # st.text(f"Hello {first_name}!")
+    st.markdown(f'<p class="hello-text">Hello {first_name}!</p>', unsafe_allow_html=True)
 
-    st.divider()
+    # st.divider()
 
     #Edit profile
-    st.markdown("### ✏️ Edit Profile")
-    with st.expander("Update your information"):
+    # st.markdown("### ✏️ Edit Profile")
+    st.markdown('<div class="edit-profile-expander">', unsafe_allow_html=True)
+    with st.expander("Update your Information"):
         with st.form("edit_profile_form"):
             new_first_name = st.text_input("First Name", value=first_name)
             new_last_name = st.text_input("Last Name", value=last_name)
@@ -359,22 +372,27 @@ with st.sidebar:
                     
                 else:
                     st.error("❌ Failed to save. Please try again.")
+    st.markdown('</div>', unsafe_allow_html=True)
+    # st.divider()
 
-    st.divider()
+    # Load conversation history from S3
+    if cognito_user_id and not st.session_state.get("conversation_history"):
+        st.session_state["conversation_history"] = s3_storage.get_conversation_history(cognito_user_id, limit=5)
 
-    # User info and Logout
-    if st.session_state.get("authenticated"):
-        auth_email = st.session_state.get("auth_user", {}).get("email", "User")
-        st.write(f"Logged in as: **{auth_email}**")
-        if st.button("Logout", type="primary", use_container_width=True):
-            cognito_auth.logout()
+    # Display conversation history
+    st.markdown("### 💬 Conversations")
 
-    st.divider()
+    # New Conversation button
+    if st.button("➕ New Conversation", use_container_width=True, type="primary"):
+        st.session_state["messages"] = []
+        st.session_state["message_log"] = []
+        st.session_state["current_conversation_id"] = None
+        # Refresh conversation history from S3
+        if cognito_user_id:
+            st.session_state["conversation_history"] = s3_storage.get_conversation_history(cognito_user_id, limit=5)
+        st.rerun()
 
     #Export button
-    st.markdown("### 📄 Export Conversation")
-    st.caption("Download your conversation as a PDF")
-
     export_clicked = st.button("📥 Export", use_container_width=True, type="primary")
     
     if export_clicked:
@@ -398,24 +416,6 @@ with st.sidebar:
             else:
                 st.error("❌ Export failed. Please try again or contact support.")
 
-    st.divider()
-
-    # Load conversation history from S3
-    if cognito_user_id and not st.session_state.get("conversation_history"):
-        st.session_state["conversation_history"] = s3_storage.get_conversation_history(cognito_user_id, limit=5)
-    
-    # New Conversation button
-    if st.button("➕ New Conversation", use_container_width=True, type="primary"):
-        st.session_state["messages"] = []
-        st.session_state["message_log"] = []
-        st.session_state["current_conversation_id"] = None
-        # Refresh conversation history from S3
-        if cognito_user_id:
-            st.session_state["conversation_history"] = s3_storage.get_conversation_history(cognito_user_id, limit=5)
-        st.rerun()
-
-    # Display conversation history
-    st.markdown("### 💬 Conversation History")
     conversation_history = st.session_state.get("conversation_history", [])
     
     if conversation_history:
@@ -491,6 +491,14 @@ with st.sidebar:
     else:
         st.info("No previous conversations. Start chatting to create your first conversation!")
 
+    # User info and Logout
+    if st.session_state.get("authenticated"):
+        auth_email = st.session_state.get("auth_user", {}).get("email", "User")
+        # st.write(f"Logged in as: **{auth_email}**")
+        if st.button("Logout", type="primary", use_container_width=True):
+            cognito_auth.logout()
+
+
 # Display chat messages
 if "messages" in st.session_state:
     for message in st.session_state.messages:
@@ -505,7 +513,8 @@ if "messages" in st.session_state:
                 clean_content = message.content
             else:
                 emotion, clean_content = extract_emotion_from_response(message.content)
-            with st.chat_message("assistant", avatar=ICON_PATH):
+            # with st.chat_message("assistant", avatar=ICON_PATH):
+            with st.chat_message("assistant"):
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.write(clean_content)
@@ -668,7 +677,8 @@ if prompt := st.chat_input():
                 s3_storage.save_conversation(cognito_user_id, conversation_id, conversation_data)
 
         # Display AI response with emotion graphic
-        with st.chat_message("assistant", avatar=ICON_PATH):
+        # with st.chat_message("assistant", avatar=ICON_PATH):
+        with st.chat_message("assistant"):
             col1, col2 = st.columns([4, 1])
             with col1:
                 st.write(clean_text)

@@ -11,6 +11,17 @@ from urllib.parse import quote
 # Cache for secrets loaded from parent directory
 _parent_secrets = None
 
+def _apply_custom_css():
+    """Load and apply custom CSS from style.css"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    css_path = os.path.join(project_root, "style.css")
+
+    if os.path.exists(css_path):
+        with open(css_path) as f:
+            css = f.read()
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
 def _load_parent_secrets():
     """Load secrets from parent .streamlit directory if available"""
     global _parent_secrets
@@ -176,6 +187,9 @@ def login():
             
     # If not authenticated and no code, show login button
     if not st.session_state.get("authenticated", False):
+
+        _apply_custom_css()
+
         # Welcome text
         st.markdown("## Welcome")
         st.markdown("**ArchPal** is an AI companion designed at UGA to support you as a writer, learner, and thinker.")
