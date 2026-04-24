@@ -11,6 +11,7 @@ import json
 import logging
 from typing import Literal
 from pydantic import BaseModel, Field
+from streamlit_theme import st_theme
 
 # Local imports
 from utils import cognito_auth, data_export, s3_storage
@@ -147,11 +148,24 @@ def initialize_session_state():
     cognito_auth.init_auth_state()
 
 def apply_custom_css():
+
+    # Detect current theme
+    # theme = st.context.theme  # returns 'light' or 'dark'
+    theme = st_theme()
+    theme_type = theme.get("base", "light") if theme else "light"
+
     css_path = os.path.join(os.path.dirname(__file__), "style.css")
     with open(css_path) as f:
         css = f.read()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
+    # Load theme-specific CSS
+    theme_css_filename = "style_dark.css" if theme_type == "dark" else "style.css"
+    theme_css_path = os.path.join(os.path.dirname(__file__), theme_css_filename)
+    if os.path.exists(theme_css_path):
+        with open(theme_css_path) as f:
+            theme_css = f.read()
+        st.markdown(f"<style>{theme_css}</style>", unsafe_allow_html=True)
 apply_custom_css()
 
 # Initialize session state

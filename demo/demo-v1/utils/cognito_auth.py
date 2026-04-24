@@ -7,11 +7,12 @@ import json
 import toml
 from datetime import datetime, time
 from urllib.parse import quote
+from streamlit_theme import st_theme
 
 # Cache for secrets loaded from parent directory
 _parent_secrets = None
 
-def _apply_custom_css():
+def _apply_custom_css(theme_type="light"):
     """Load and apply custom CSS from style.css"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
@@ -21,6 +22,14 @@ def _apply_custom_css():
         with open(css_path) as f:
             css = f.read()
         st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+    # Apply theme-specific CSS
+    theme_css_filename = "style_dark.css" if theme_type == "dark" else "style.css"
+    theme_css_path = os.path.join(project_root, theme_css_filename)
+    if os.path.exists(theme_css_path):
+        with open(theme_css_path) as f:
+            theme_css = f.read()
+        st.markdown(f"<style>{theme_css}</style>", unsafe_allow_html=True)
 
 def _load_parent_secrets():
     """Load secrets from parent .streamlit directory if available"""
@@ -188,7 +197,11 @@ def login():
     # If not authenticated and no code, show login button
     if not st.session_state.get("authenticated", False):
 
-        _apply_custom_css()
+        # _apply_custom_css()
+        theme = st_theme()
+        theme_type = theme.get("base", "light") if theme else "light"
+
+        _apply_custom_css(theme_type)
 
         # Welcome text
         st.markdown("## Welcome")
